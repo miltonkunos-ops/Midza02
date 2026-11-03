@@ -3,15 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Saints Trek Point</title>
+  <title>Saints Trek Point Ledger</title>
   <style>
     :root {
       --bg-color: #121212;
       --card-bg: #1e1e1e;
       --accent: #4caf50;
+      --accent-hover: #45a049;
       --text: #ffffff;
       --text-muted: #aaaaaa;
       --danger: #f44336;
+      --input-bg: #2a2a2a;
+      --border-color: #333333;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -26,38 +29,55 @@
       align-items: center;
       margin-bottom: 20px;
     }
+    .user-badge {
+      background: var(--accent);
+      color: #000;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
     .nav-tabs {
       display: flex;
       gap: 8px;
       overflow-x: auto;
       margin-bottom: 20px;
+      padding-bottom: 4px;
     }
     .tab-btn {
-      background: #2a2a2a;
-      border: none;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       color: var(--text);
       padding: 10px 16px;
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
+      white-space: nowrap;
     }
     .tab-btn.active {
       background: var(--accent);
       color: #000;
+      border-color: var(--accent);
     }
     .card {
       background: var(--card-bg);
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 16px;
+      border: 1px solid var(--border-color);
     }
     .grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 12px;
     }
+    .stat-box {
+      background: var(--input-bg);
+      padding: 12px;
+      border-radius: 8px;
+    }
     .stat-val {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: bold;
       margin-top: 4px;
     }
@@ -68,118 +88,107 @@
       padding: 12px;
       margin: 8px 0;
       border-radius: 8px;
-      border: 1px solid #333;
-      background: #2a2a2a;
-      color: #fff;
+      border: 1px solid var(--border-color);
+      background: var(--input-bg);
+      color: var(--text);
       box-sizing: border-box;
+      font-size: 1rem;
     }
     button.btn-main {
       background: var(--accent);
       color: #000;
       font-weight: bold;
       border: none;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    button.btn-main:hover {
+      background: var(--accent-hover);
     }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    th { color: var(--text-muted); font-size: 0.85rem; }
   </style>
 </head>
 <body>
 
   <div class="header">
     <h2>Saints Trek Point</h2>
-    <span style="background: var(--accent); color: #000; padding: 4px 12px; border-radius: 16px; font-weight: bold;">Milton</span>
+    <span class="user-badge">Milton</span>
   </div>
 
   <div class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('sell')">Sell</button>
-    <button class="tab-btn" onclick="switchTab('stock')">Stock</button>
-    <button class="tab-btn" onclick="switchTab('expenses')">Expenses</button>
-    <button class="tab-btn" onclick="switchTab('ledger')">Ledger</button>
-    <button class="tab-btn" onclick="switchTab('history')">History</button>
-    <button class="tab-btn" onclick="switchTab('sync')">Sync</button>
+    <button class="tab-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('sell', this)">Sell</button>
+    <button class="tab-btn" onclick="switchTab('stock', this)">Stock</button>
+    <button class="tab-btn" onclick="switchTab('expenses', this)">Expenses</button>
+    <button class="tab-btn" onclick="switchTab('history', this)">History</button>
   </div>
 
-  <!-- EXPENSES & SUMMARY TAB -->
-  <div id="tab-expenses" class="tab-content">
+  <!-- DASHBOARD / PROFIT TRACKING -->
+  <div id="tab-dashboard" class="tab-content active">
     <div class="card">
-      <h3>Financial Summary</h3>
+      <h3>Financial Overview</h3>
       <div class="grid">
-        <div>
-          <small>Total Sales</small>
+        <div class="stat-box">
+          <small>Total Revenue</small>
           <div id="summary-sales" class="stat-val">$0.00</div>
         </div>
-        <div>
-          <small>Total Expenses</small>
+        <div class="stat-box">
+          <small>COGS (Item Costs)</small>
+          <div id="summary-cogs" class="stat-val expense">$0.00</div>
+        </div>
+        <div class="stat-box">
+          <small>Other Expenses</small>
           <div id="summary-expenses" class="stat-val expense">$0.00</div>
         </div>
-      </div>
-      <hr style="border-color: #333; margin: 16px 0;">
-      <div>
-        <small>Net Profit</small>
-        <div id="summary-profit" class="stat-val profit">$0.00</div>
+        <div class="stat-box">
+          <small>Net Profit</small>
+          <div id="summary-profit" class="stat-val profit">$0.00</div>
+        </div>
       </div>
     </div>
+  </div>
 
+  <!-- SELL TAB -->
+  <div id="tab-sell" class="tab-content">
     <div class="card">
-      <h3>Log Business Expense</h3>
-      <form id="expense-form" onsubmit="addExpense(event)">
-        <input type="text" id="expense-name" placeholder="Expense description (e.g. Rent, Transport)" required>
-        <input type="number" step="0.01" id="expense-amount" placeholder="Amount ($)" required>
-        <select id="expense-category">
-          <option value="Rent">Rent</option>
-          <option value="Transport">Transport</option>
-          <option value="Supplies">Supplies</option>
-          <option value="Stock Cost">Stock Purchase</option>
-          <option value="Other">Other</option>
+      <h3>Record Sale</h3>
+      <form id="sales-form" onsubmit="recordSale(event)">
+        <select id="sale-item-select" required onchange="updateSaleMax()">
+          <option value="">Select Item</option>
         </select>
-        <button type="submit" class="btn-main">Add Expense</button>
+        <input type="number" id="sale-qty" placeholder="Quantity" min="1" required>
+        <button type="submit" class="btn-main">Complete Sale</button>
       </form>
     </div>
   </div>
 
-  <!-- OTHER TABS PLACEHOLDERS -->
-  <div id="tab-sell" class="tab-content active">
-    <div class="card"><h3>Sales Panel</h3><p>Record your daily transactions here.</p></div>
-  </div>
+  <!-- STOCK & UNIT COST TAB -->
   <div id="tab-stock" class="tab-content">
-    <div class="card"><h3>Inventory & Item Costs</h3><p>Manage products and unit purchase costs.</p></div>
-  </div>
-  <div id="tab-ledger" class="tab-content">
-    <div class="card"><h3>Ledger</h3><p>Track balances and outstanding accounts.</p></div>
-  </div>
-  <div id="tab-history" class="tab-content">
-    <div class="card"><h3>History</h3><p>Transaction history log.</p></div>
-  </div>
-  <div id="tab-sync" class="tab-content">
-    <div class="card"><h3>Live Sync</h3><p>Firebase live synchronization active.</p></div>
-  </div>
+    <div class="card">
+      <h3>Add Inventory / Items</h3>
+      <form id="stock-form" onsubmit="addStock(event)">
+        <input type="text" id="item-name" placeholder="Item Name" required>
+        <input type="number" step="0.01" id="item-unit-cost" placeholder="Unit Cost ($)" required>
+        <input type="number" step="0.01" id="item-selling-price" placeholder="Selling Price ($)" required>
+        <input type="number" id="item-qty" placeholder="Quantity in Stock" min="0" required>
+        <button type="submit" class="btn-main">Save Item</button>
+      </form>
+    </div>
 
-  <script>
-    function switchTab(tabName) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-      
-      document.getElementById('tab-' + tabName).classList.add('active');
-      event.currentTarget.classList.add('active');
-    }
-
-    let totalSales = 0;
-    let totalExpenses = 0;
-
-    function addExpense(e) {
-      e.preventDefault();
-      const amount = parseFloat(document.getElementById('expense-amount').value) || 0;
-      totalExpenses += amount;
-      updateCalculations();
-      document.getElementById('expense-form').reset();
-    }
-
-    function updateCalculations() {
-      const netProfit = totalSales - totalExpenses;
-      document.getElementById('summary-sales').innerText = '$' + totalSales.toFixed(2);
-      document.getElementById('summary-expenses').innerText = '$' + totalExpenses.toFixed(2);
-      document.getElementById('summary-profit').innerText = '$' + netProfit.toFixed(2);
-    }
-  </script>
-</body>
-</html>
+    <div class="card">
+      <h3>Current Stock</h3>
+      <table>
+        <thead>
+          <tr>
