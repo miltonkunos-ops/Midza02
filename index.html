@@ -124,151 +124,204 @@
       color: var(--accent);
       margin-top: 4px;
     }
+    #auth-screen {
+      max-width: 400px;
+      margin: 40px auto;
+    }
   </style>
 
-  <!-- Firebase Compat Libraries for Direct Realtime & Firestore Connectivity -->
+  <!-- Firebase Compat Libraries -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-  <div class="header">
-    <div>
-      <h2 style="margin:0;">Saints Trek Point</h2>
-      <div id="sync-indicator" class="sync-status">Connecting to Firebase...</div>
+  <!-- AUTHENTICATION SCREEN FOR CO-OWNERS -->
+  <div id="auth-screen" class="card">
+    <h2 style="margin-top:0;">Saints Trek Point Login</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Sign in with your co-owner account to manage records.</p>
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <input type="email" id="auth-email" placeholder="Co-owner Email" required>
+      <input type="password" id="auth-password" placeholder="Password" required>
+      <button type="submit" class="btn-main">Login</button>
+    </form>
+    <div id="auth-error" style="color: var(--danger); font-size: 0.85rem; margin-top: 8px;"></div>
+  </div>
+
+  <!-- MAIN APP CONTAINER (Hidden until logged in) -->
+  <div id="app-container" style="display: none;">
+    <div class="header">
+      <div>
+        <h2 style="margin:0;">Saints Trek Point</h2>
+        <div id="sync-indicator" class="sync-status">Connected</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span id="user-display" class="user-badge">User</span>
+        <button onclick="handleLogout()" style="padding: 4px 8px; margin:0; width:auto; background:var(--danger); color:#fff; border:none; border-radius:4px; font-size:0.8rem; cursor:pointer;">Logout</button>
+      </div>
     </div>
-    <span class="user-badge">Milton</span>
-  </div>
 
-  <div class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('sell', this)">Sell</button>
-    <button class="tab-btn" onclick="switchTab('stock', this)">Stock</button>
-    <button class="tab-btn" onclick="switchTab('expenses', this)">Expenses</button>
-    <button class="tab-btn" onclick="switchTab('history', this)">History</button>
-  </div>
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('sell', this)">Sell</button>
+      <button class="tab-btn" onclick="switchTab('stock', this)">Stock</button>
+      <button class="tab-btn" onclick="switchTab('credit', this)">Credit Ledger</button>
+      <button class="tab-btn" onclick="switchTab('expenses', this)">Expenses</button>
+      <button class="tab-btn" onclick="switchTab('history', this)">History</button>
+    </div>
 
-  <!-- DASHBOARD -->
-  <div id="tab-dashboard" class="tab-content active">
-    <div class="card">
-      <h3>Financial Overview</h3>
-      <div class="grid">
-        <div class="stat-box">
-          <small>Total Revenue</small>
-          <div id="summary-sales" class="stat-val">$0.00</div>
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="card">
+        <h3>Financial Overview</h3>
+        <div class="grid">
+          <div class="stat-box">
+            <small>Total Revenue</small>
+            <div id="summary-sales" class="stat-val">$0.00</div>
+          </div>
+          <div class="stat-box">
+            <small>Item Costs (COGS)</small>
+            <div id="summary-cogs" class="stat-val expense">$0.00</div>
+          </div>
+          <div class="stat-box">
+            <small>Other Expenses</small>
+            <div id="summary-expenses" class="stat-val expense">$0.00</div>
+          </div>
+          <div class="stat-box">
+            <small>Net Profit</small>
+            <div id="summary-profit" class="stat-val profit">$0.00</div>
+          </div>
         </div>
-        <div class="stat-box">
-          <small>Item Costs (COGS)</small>
-          <div id="summary-cogs" class="stat-val expense">$0.00</div>
-        </div>
-        <div class="stat-box">
-          <small>Other Expenses</small>
-          <div id="summary-expenses" class="stat-val expense">$0.00</div>
-        </div>
-        <div class="stat-box">
-          <small>Net Profit</small>
-          <div id="summary-profit" class="stat-val profit">$0.00</div>
-        </div>
+      </div>
+    </div>
+
+    <!-- SELL TAB -->
+    <div id="tab-sell" class="tab-content">
+      <div class="card">
+        <h3>Record Sale</h3>
+        <form id="sales-form" onsubmit="recordSale(event)">
+          <select id="sale-item-select" required>
+            <option value="">Select Item</option>
+          </select>
+          <input type="number" id="sale-qty" placeholder="Quantity" min="1" required>
+          <button type="submit" class="btn-main">Complete Sale</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- STOCK TAB -->
+    <div id="tab-stock" class="tab-content">
+      <div class="card">
+        <h3>Add / Update Stock</h3>
+        <form id="stock-form" onsubmit="addStock(event)">
+          <input type="text" id="item-name" placeholder="Item Name" required>
+          <input type="number" step="0.01" id="item-unit-cost" placeholder="Unit Cost ($)" required>
+          <input type="number" step="0.01" id="item-selling-price" placeholder="Selling Price ($)" required>
+          <input type="number" id="item-qty" placeholder="Quantity in Stock" min="0" required>
+          <button type="submit" class="btn-main">Save to Inventory</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Current Stock</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Cost</th>
+              <th>Price</th>
+              <th>Qty</th>
+            </tr>
+          </thead>
+          <tbody id="stock-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CREDIT LEDGER TAB -->
+    <div id="tab-credit" class="tab-content">
+      <div class="card">
+        <h3>Record Credit / Change Owed</h3>
+        <form id="credit-form" onsubmit="addCreditRecord(event)">
+          <input type="text" id="customer-name" placeholder="Customer Name" required>
+          <input type="text" id="credit-item" placeholder="Items / Description" required>
+          <input type="number" step="0.01" id="credit-amount" placeholder="Total Amount Owed ($)" required>
+          <button type="submit" class="btn-main">Save Credit Record</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Credit & Debt Ledger</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="credit-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- EXPENSES TAB -->
+    <div id="tab-expenses" class="tab-content">
+      <div class="card">
+        <h3>Log General Expense</h3>
+        <form id="expense-form" onsubmit="addExpense(event)">
+          <input type="text" id="expense-name" placeholder="Description (Rent, Transport, etc.)" required>
+          <input type="number" step="0.01" id="expense-amount" placeholder="Amount ($)" required>
+          <select id="expense-category">
+            <option value="Rent">Rent</option>
+            <option value="Transport">Transport</option>
+            <option value="Supplies">Supplies</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Other">Other</option>
+          </select>
+          <button type="submit" class="btn-main">Log Expense</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Logged Expenses</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody id="expense-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="tab-history" class="tab-content">
+      <div class="card">
+        <h3>Sales History</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Revenue</th>
+              <th>Profit</th>
+              <th>By</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body"></tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <!-- SELL TAB -->
-  <div id="tab-sell" class="tab-content">
-    <div class="card">
-      <h3>Record Sale</h3>
-      <form id="sales-form" onsubmit="recordSale(event)">
-        <select id="sale-item-select" required>
-          <option value="">Select Item</option>
-        </select>
-        <input type="number" id="sale-qty" placeholder="Quantity" min="1" required>
-        <button type="submit" class="btn-main">Complete Sale</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- STOCK TAB -->
-  <div id="tab-stock" class="tab-content">
-    <div class="card">
-      <h3>Add / Update Stock</h3>
-      <form id="stock-form" onsubmit="addStock(event)">
-        <input type="text" id="item-name" placeholder="Item Name" required>
-        <input type="number" step="0.01" id="item-unit-cost" placeholder="Unit Cost ($)" required>
-        <input type="number" step="0.01" id="item-selling-price" placeholder="Selling Price ($)" required>
-        <input type="number" id="item-qty" placeholder="Quantity in Stock" min="0" required>
-        <button type="submit" class="btn-main">Save to Inventory</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <h3>Current Stock</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Cost</th>
-            <th>Price</th>
-            <th>Qty</th>
-          </tr>
-        </thead>
-        <tbody id="stock-table-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- EXPENSES TAB -->
-  <div id="tab-expenses" class="tab-content">
-    <div class="card">
-      <h3>Log General Expense</h3>
-      <form id="expense-form" onsubmit="addExpense(event)">
-        <input type="text" id="expense-name" placeholder="Description (Rent, Transport, etc.)" required>
-        <input type="number" step="0.01" id="expense-amount" placeholder="Amount ($)" required>
-        <select id="expense-category">
-          <option value="Rent">Rent</option>
-          <option value="Transport">Transport</option>
-          <option value="Supplies">Supplies</option>
-          <option value="Packaging">Packaging</option>
-          <option value="Other">Other</option>
-        </select>
-        <button type="submit" class="btn-main">Log Expense</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <h3>Logged Expenses</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th>Category</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody id="expense-table-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- HISTORY TAB -->
-  <div id="tab-history" class="tab-content">
-    <div class="card">
-      <h3>Sales History</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Qty</th>
-            <th>Revenue</th>
-            <th>Profit</th>
-          </tr>
-        </thead>
-        <tbody id="history-table-body"></tbody>
-      </table>
-    </div>
-  </div>
-
   <script>
-    // Exact Working Firebase Configuration
+    // Firebase Configuration
     const firebaseConfig = {
       apiKey: "AIzaSyB...", 
       authDomain: "midza02.firebaseapp.com",
@@ -279,11 +332,44 @@
     };
 
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.firestore();
 
+    let currentUser = null;
     let inventory = [];
     let salesHistory = [];
     let expensesList = [];
+    let creditList = [];
+
+    // Auth State Observer
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('app-container').style.display = 'block';
+        document.getElementById('user-display').innerText = user.email.split('@')[0];
+        initListeners();
+      } else {
+        currentUser = null;
+        document.getElementById('auth-screen').style.display = 'block';
+        document.getElementById('app-container').style.display = 'none';
+      }
+    });
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value;
+      const pass = document.getElementById('auth-password').value;
+      try {
+        await auth.signInWithEmailAndPassword(email, pass);
+      } catch (err) {
+        document.getElementById('auth-error').innerText = err.message;
+      }
+    }
+
+    function handleLogout() {
+      auth.signOut();
+    }
 
     // Switch active navigation tab
     function switchTab(tabName, btnElement) {
@@ -294,36 +380,42 @@
       btnElement.classList.add('active');
     }
 
-    // Live Snapshot Listeners
-    db.collection("inventory").onSnapshot(snapshot => {
-      inventory = [];
-      snapshot.forEach(doc => {
-        inventory.push({ id: doc.id, ...doc.data() });
+    // Realtime Database Listeners
+    function initListeners() {
+      db.collection("inventory").onSnapshot(snapshot => {
+        inventory = [];
+        snapshot.forEach(doc => {
+          inventory.push({ id: doc.id, ...doc.data() });
+        });
+        renderInventory();
       });
-      renderInventory();
-      document.getElementById('sync-indicator').innerText = "Live Synced •";
-    }, err => {
-      console.error(err);
-      document.getElementById('sync-indicator').innerText = "Offline / Sync Error";
-    });
 
-    db.collection("sales").onSnapshot(snapshot => {
-      salesHistory = [];
-      snapshot.forEach(doc => {
-        salesHistory.push({ id: doc.id, ...doc.data() });
+      db.collection("sales").onSnapshot(snapshot => {
+        salesHistory = [];
+        snapshot.forEach(doc => {
+          salesHistory.push({ id: doc.id, ...doc.data() });
+        });
+        renderHistory();
+        calculateTotals();
       });
-      renderHistory();
-      calculateTotals();
-    });
 
-    db.collection("expenses").onSnapshot(snapshot => {
-      expensesList = [];
-      snapshot.forEach(doc => {
-        expensesList.push({ id: doc.id, ...doc.data() });
+      db.collection("expenses").onSnapshot(snapshot => {
+        expensesList = [];
+        snapshot.forEach(doc => {
+          expensesList.push({ id: doc.id, ...doc.data() });
+        });
+        renderExpenses();
+        calculateTotals();
       });
-      renderExpenses();
-      calculateTotals();
-    });
+
+      db.collection("credit").onSnapshot(snapshot => {
+        creditList = [];
+        snapshot.forEach(doc => {
+          creditList.push({ id: doc.id, ...doc.data() });
+        });
+        renderCredit();
+      });
+    }
 
     // Add or Update Stock Item
     async function addStock(e) {
@@ -369,6 +461,7 @@
         revenue: totalRevenue,
         cogs: totalCost,
         profit: profit,
+        user: currentUser.email.split('@')[0],
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
 
@@ -377,6 +470,30 @@
       });
 
       document.getElementById('sales-form').reset();
+    }
+
+    // Credit Ledger Entry
+    async function addCreditRecord(e) {
+      e.preventDefault();
+      const customer = document.getElementById('customer-name').value.trim();
+      const itemDesc = document.getElementById('credit-item').value.trim();
+      const amount = parseFloat(document.getElementById('credit-amount').value) || 0;
+
+      await db.collection("credit").add({
+        customer: customer,
+        item: itemDesc,
+        amount: amount,
+        user: currentUser.email.split('@')[0],
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      document.getElementById('credit-form').reset();
+    }
+
+    async function settleCredit(id) {
+      if (confirm("Mark this credit record as settled/paid?")) {
+        await db.collection("credit").doc(id).delete();
+      }
     }
 
     // Log Expense
@@ -390,6 +507,7 @@
         name: name,
         amount: amount,
         category: category,
+        user: currentUser.email.split('@')[0],
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
 
@@ -418,6 +536,20 @@
       });
     }
 
+    function renderCredit() {
+      const tbody = document.getElementById('credit-table-body');
+      tbody.innerHTML = '';
+      creditList.forEach(c => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${c.customer}</td>
+            <td>${c.item}</td>
+            <td>$${(c.amount || 0).toFixed(2)}</td>
+            <td><button onclick="settleCredit('${c.id}')" style="padding:4px 8px; margin:0; background:var(--accent); color:#000; border:none; border-radius:4px; cursor:pointer;">Paid</button></td>
+          </tr>`;
+      });
+    }
+
     function renderExpenses() {
       const tbody = document.getElementById('expense-table-body');
       tbody.innerHTML = '';
@@ -441,6 +573,7 @@
             <td>${sale.qty}</td>
             <td>$${(sale.revenue || 0).toFixed(2)}</td>
             <td>$${(sale.profit || 0).toFixed(2)}</td>
+            <td><small>${sale.user || 'Admin'}</small></td>
           </tr>`;
       });
     }
