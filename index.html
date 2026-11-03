@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saints Trek Point</title>
+<meta name="theme-color" content="#1f6f4a">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1d1d1b;--mute:#6b6a64;--line:#e3e0d6;--acc:#1f6f4a;--accink:#fff;--bad:#b3412e;--chg:#1f6f4a;--cr:#b3412e;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#161614;--card:#222220;--ink:#f1efe8;--mute:#a09e94;--line:#383733;--acc:#4fb582;--accink:#0d1f16;--bad:#e08572;--chg:#4fb582;--cr:#e08572;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+h1{font-size:20px;margin:0}h2{font-size:15px;margin:0 0 8px}
+.role{font-size:12px;padding:5px 12px;border-radius:99px;background:var(--acc);color:var(--accink);border:0}
+nav{display:flex;gap:6px;margin-bottom:12px}
+nav button{flex:1;padding:10px 2px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font-size:13px}
+nav button.on{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:90px}
+.go{width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;background:var(--acc);color:var(--accink);font-size:16px;font-weight:600}
+.go.alt{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}.sub{font-size:13px;color:var(--mute)}
+.chg{color:var(--chg);font-weight:600}.cr{color:var(--cr);font-weight:600}
+.msg{font-size:14px;margin-top:10px;min-height:18px}.err{color:var(--bad)}
+.del,.lnk{border:0;background:none;color:var(--bad);font-size:13px;padding:4px}.lnk{color:var(--acc)}
+.qty{display:flex;align-items:center;gap:8px}.qty button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:20px}
+.qty span{min-width:22px;text-align:center;font-weight:600}
+.tot{display:flex;gap:10px}.tot>div{flex:1}.tot b{display:block;font-size:20px}
+.low{color:var(--bad);font-weight:600}.hide{display:none}
+.warn{border-color:var(--bad);color:var(--bad);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Saints Trek Point</h1><button class="role" id="role">…</button></header>
+<div id="warn" class="card warn hide">This phone can’t save data in this browser. Open this file in Chrome from your Files app, and send your data to your co-owner often.</div>
+
+<div id="setup" class="card hide">
+<h2>Welcome</h2>
+<label for="nm">Your name (shown on every sale you make)</label>
+<input id="nm" placeholder="e.g. Milton" autocomplete="off">
+<button class="go" id="namego">Start</button>
+</div>
+
+<div id="app" class="hide">
+<nav><button data-t="sell" class="on">Sell</button><button data-t="stock">Stock</button><button data-t="led">Ledger</button><button data-t="his">History</button><button data-t="syn">Sync</button></nav>
+
+<section id="sell">
+<div class="card">
+<label for="scust">Customer (needed for credit or change)</label>
+<input id="scust" list="names" autocomplete="off" placeholder="Optional for cash">
+<input id="sq" placeholder="Search item" style="margin-top:10px">
+<div id="slist"></div>
+</div>
+<div class="card">
+<div class="row"><b>Total</b><b id="stot">$0.00</b></div>
+<label for="spay">Payment</label>
+<select id="spay"><option value="cash">Cash</option><option value="credit">On credit</option><option value="change">Use customer’s change</option></select>
+<div id="sbal" class="sub" style="margin-top:6px"></div>
+<button class="go" id="sdone">Complete sale</button>
+<div class="msg" id="smsg"></div>
+</div>
+</section>
+
+<section id="stock" class="hide">
+<div class="card tot"><div><span class="sub">Today’s sales</span><b id="today">$0.00</b></div><div><span class="sub">Items low</span><b class="low" id="lowc">0</b></div></div>
+<div class="card">
+<h2>Add an item</h2>
+<label for="inm">Item name</label><input id="inm" placeholder="e.g. Bread">
+<label for="ipr">Selling price ($)</label><input id="ipr" type="number" inputmode="decimal" min="0" step="0.01">
+<label for="ilow">Warn when stock is at or below</label><input id="ilow" type="number" inputmode="numeric" min="0" value="5">
+<button class="go" id="iadd">Add item</button>
+<h2 style="margin-top:18px">Stock in</h2>
+<label for="isel">Item</label><select id="isel"></select>
+<label for="iqty">Quantity received</label><input id="iqty" type="number" inputmode="numeric" min="1" step="1">
+<button class="go" id="iin">Add to stock</button>
+<div class="msg" id="imsg"></div>
+</div>
+<div class="card" id="tlist"></div>
+</section>
+
+<section id="led" class="hide">
+<div class="card">
+<label for="name">Customer name</label>
+<input id="name" list="names" autocomplete="off" placeholder="e.g. Tendai">
+<datalist id="names"></datalist>
+<div id="bal" class="sub" style="margin-top:6px"></div>
+<label for="type">What happened?</label>
+<select id="type"><option value="change">Customer left change with us</option><option value="credit">Customer took goods on credit</option><option value="buy_change">Customer bought using their change</option><option value="pay">Customer paid part of their credit</option></select>
+<label for="amt">Amount ($)</label><input id="amt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+<label for="item">Note (optional)</label><input id="item" placeholder="e.g. 2 loaves, airtime">
+<button class="go" id="save">Save entry</button>
+<div class="msg" id="msg"></div>
+</div>
+<input id="q" placeholder="Search customer" style="margin-bottom:12px">
+<div class="card tot"><div><span class="sub">Change we hold</span><b class="chg" id="tchg">$0.00</b></div><div><span class="sub">Credit owed to us</span><b class="cr" id="tcr">$0.00</b></div></div>
+<div class="card" id="clist"></div>
+</section>
+
+<section id="his" class="hide">
+<h2>Sales</h2><div class="card" id="hsales"></div>
+<h2>Ledger entries</h2><div class="card" id="hlist"></div>
+</section>
+
+<section id="syn" class="hide">
+<div class="card">
+<h2>Live sync</h2>
+<div id="lvoff">
+<div class="sub">Connect both phones to a free online database so sales and stock update on both phones automatically. It still works offline and catches up when you’re back online.</div>
+<label for="lvin">Paste your Firebase config, or the setup code from your co-owner</label>
+<textarea id="lvin" placeholder="Paste here"></textarea>
+<button class="go" id="lvgo">Connect</button>
+<button class="go alt" id="lvrules">Copy the database rules</button>
+<details class="sub" style="margin-top:12px"><summary>How to set up the database (once)</summary>
+<ol>
+<li>Open console.firebase.google.com and sign in with a Google account.</li>
+<li>Add project. Name it, turn off Google Analytics, then create it.</li>
+<li>Build, then Firestore Database, then Create database. Pick the closest location and start in production mode.</li>
+<li>Open the Rules tab. Delete what’s there, paste the rules from the button above, and tap Publish.</li>
+<li>Project settings (gear icon), Your apps, web icon, register the app. Copy the firebaseConfig block.</li>
+<li>Paste it above and tap Connect. Then copy the setup code and send it to your co-owner. They paste it here and tap Connect.</li>
+</ol>
+Anyone who has the setup code can see and change your data, so send it only to your co-owner.
+</details>
+</div>
+<div id="lvon" class="hide">
+<div class="msg" id="lvst" style="margin-top:0">Connecting…</div>
+<button class="go" id="lvcode">Copy setup code for co-owner</button>
+<button class="go alt" id="lvoffbtn">Disconnect this phone</button>
+</div>
+<div class="msg" id="lvmsg"></div>
+</div>
+<div class="card">
+<h2>Send my data</h2>
+<div class="sub">Shares a small file (WhatsApp works). Your co-owner imports it on their phone.</div>
+<button class="go" id="send">Send to co-owner</button>
+<button class="go alt" id="copy">Copy as text instead</button>
+<div class="sub" id="lastsent" style="margin-top:10px"></div>
+</div>
+<div class="card">
+<h2>Import co-owner’s data</h2>
+<div class="sub">Merges their sales, stock and ledger into yours. Nothing is duplicated and nothing of yours is lost.</div>
+<label for="file">Choose the file they sent</label>
+<input id="file" type="file">
+<label for="paste">Or paste the copied text here</label>
+<textarea id="paste" placeholder="Paste here"></textarea>
+<button class="go" id="imp">Import pasted text</button>
+<div class="msg" id="smsg2"></div>
+<div class="sub" id="lastimp"></div>
+</div>
+<div class="card sub">Do this at the end of every day, in both directions: you send, they import, they send, you import. Sending also works as a backup if your phone is lost.</div>
+</section>
+</div>
+</main>
+<script>
+(function(){
+var SK="stp_local_v1",COLS=["items","stockin","sales","tx"];
+var S={items:{},stockin:{},sales:{},tx:{},del:{},me:"",lastImp:0,lastSent:0,dirty:[],live:null,seeded:false};
+var memOnly=false,cart={};
+var $=function(i){return document.getElementById(i)};
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function money(n){return "$"+(Math.round(n*100)/100).toFixed(2)}
+function key(n){return String(n||"").trim().toLowerCase().replace(/\s+/g," ")}
+function rid(){return "t"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function num(x){return typeof x==="number"&&isFinite(x)}
+function load(){try{var r=localStorage.getItem(SK);if(r){var o=JSON.parse(r);Object.keys(S).forEach(function(k){if(o[k]!==undefined)S[k]=o[k]})}}catch(e){memOnly=true}}
+function save(){try{localStorage.setItem(SK,JSON.stringify(S));memOnly=false}catch(e){memOnly=true}}
+function arr(c){return Object.keys(S[c]).map(function(id){return Object.assign({id:id},S[c][id])})}
+function put(c,id,d){S[c][id]=d;mark(c+"/"+id);save();push()}
+function drop(c,id){delete S[c][id];S.del[c+"/"+id]=Date.now();mark("d:"+c+"/"+id);save();push()}
+function stockOf(id){var n=0;arr("stockin").forEach(function(s){if(s.item===id)n+=s.qty});
+  arr("sales").forEach(function(s){(s.lines||[]).forEach(function(l){if(l.item===id)n-=l.qty})});return n}
+function balances(){var m={};arr("tx").forEach(function(t){var k=key(t.cust),c=m[k]||(m[k]={name:String(t.cust).trim(),chg:0,cr:0});
+  if(t.type==="change")c.chg+=t.amt;else if(t.type==="buy_change")c.chg-=t.amt;else if(t.type==="credit")c.cr+=t.amt;else if(t.type==="pay")c.cr-=t.amt});return m}
+function cartTotal(){var t=0;arr("items").forEach(function(i){t+=(cart[i.id]||0)*i.price});return t}
+var LABEL={change:"Change left",credit:"Credit taken",buy_change:"Bought with change",pay:"Part payment"};
+function when(ts){return new Date(ts).toLocaleString()}
+
+function render(){
+  var items=arr("items"),m=balances(),keys=Object.keys(m).sort();
+  $("role").textContent=S.me||"Set name";$("warn").classList.toggle("hide",!memOnly);
+  $("names").innerHTML=keys.map(function(k){return '<option value="'+esc(m[k].name)+'">'}).join("");
+  var sq=key($("sq").value),sl=items.filter(function(i){return !sq||key(i.name).indexOf(sq)>-1}).sort(function(a,b){return a.name.localeCompare(b.name)});
+  $("slist").innerHTML=sl.length?sl.map(function(i){var st=stockOf(i.id),lo=i.low==null?5:i.low;
+    return '<div class="row"><div><b>'+esc(i.name)+'</b><div class="sub">'+money(i.price)+' · <span class="'+(st<=lo?'low':'')+'">'+st+' in stock</span></div></div><div class="qty"><button data-m="'+esc(i.id)+'">−</button><span>'+(cart[i.id]||0)+'</span><button data-p="'+esc(i.id)+'">+</button></div></div>'}).join(""):'<div class="sub" style="margin-top:10px">No items yet. Add them in Stock.</div>';
+  $("stot").textContent=money(cartTotal());
+  var sc=m[key($("scust").value)];$("sbal").textContent=sc?("Change "+money(sc.chg)+" · owes "+money(sc.cr)):"";
+  var low=0,td=0,t0=new Date();t0.setHours(0,0,0,0);
+  arr("sales").forEach(function(s){if(s.ts>=t0.getTime())td+=s.total});
+  $("tlist").innerHTML=items.length?items.map(function(i){var st=stockOf(i.id),lo=i.low==null?5:i.low;if(st<=lo)low++;
+    return '<div class="row"><div><b>'+esc(i.name)+'</b><div class="sub">'+money(i.price)+'</div></div><div style="text-align:right"><span class="'+(st<=lo?'low':'')+'">'+st+' left</span><div><button class="lnk" data-pr="'+esc(i.id)+'">Price</button><button class="del" data-di="'+esc(i.id)+'">Remove</button></div></div></div>'}).join(""):'<div class="sub">No items yet.</div>';
+  $("today").textContent=money(td);$("lowc").textContent=low;
+  var cur=$("isel").value;$("isel").innerHTML=items.map(function(i){return '<option value="'+esc(i.id)+'">'+esc(i.name)+'</option>'}).join("");if(cur)$("isel").value=cur;
+  var tc=0,tr=0;keys.forEach(function(k){tc+=m[k].chg;tr+=m[k].cr});
+  $("tchg").textContent=money(tc);$("tcr").textContent=money(tr);
+  var q=key($("q").value);
+  var rows=keys.filter(function(k){return !q||k.indexOf(q)>-1}).map(function(k){var c=m[k];
+    return '<div class="row" data-k="'+esc(k)+'"><b>'+esc(c.name)+'</b><div style="text-align:right">'+(Math.abs(c.chg)>0.004?'<div class="chg">Change '+money(c.chg)+'</div>':'')+(Math.abs(c.cr)>0.004?'<div class="cr">Owes '+money(c.cr)+'</div>':'')+(Math.abs(c.chg)<=0.004&&Math.abs(c.cr)<=0.004?'<div class="sub">Settled</div>':'')+'</div></div>'});
+  $("clist").innerHTML=rows.length?rows.join(""):'<div class="sub">No customers yet.</div>';
+  var cb=m[key($("name").value)];$("bal").textContent=cb?("Now: change "+money(cb.chg)+" · owes "+money(cb.cr)):"";
+  var hs=arr("sales").sort(function(a,b){return b.ts-a.ts}).slice(0,100);
+  $("hsales").innerHTML=hs.length?hs.map(function(s){
+    return '<div class="row"><div><b>'+money(s.total)+'</b> <span class="sub">· '+esc(s.pay)+(s.cust?' · '+esc(s.cust):'')+(s.by?' · by '+esc(s.by):'')+'</span><div class="sub">'+when(s.ts)+'<br>'+(s.lines||[]).map(function(l){return esc(l.qty+" × "+l.name)}).join(", ")+'</div></div><button class="del" data-ds="'+esc(s.id)+'">Delete</button></div>'}).join(""):'<div class="sub">No sales yet.</div>';
+  var h=arr("tx").sort(function(a,b){return b.ts-a.ts}).slice(0,100);
+  $("hlist").innerHTML=h.length?h.map(function(t){
+    return '<div class="row"><div><b>'+esc(t.cust)+'</b> <span class="sub">· '+esc(LABEL[t.type]||t.type)+(t.by?' · by '+esc(t.by):'')+'</span><div class="sub">'+when(t.ts)+(t.item?' · '+esc(t.item):'')+'</div></div><div style="text-align:right"><div class="'+(t.type==="change"||t.type==="pay"?'chg':'cr')+'">'+money(t.amt)+'</div><button class="del" data-dt="'+esc(t.id)+'">Delete</button></div></div>'}).join(""):'<div class="sub">No entries yet.</div>';
+  $("lastsent").textContent=S.lastSent?"Last sent: "+when(S.lastSent):"You haven’t sent your data yet.";
+  $("lastimp").textContent=S.lastImp?"Last import: "+when(S.lastImp):"";
+  $("lvoff").classList.toggle("hide",!!S.live);$("lvon").classList.toggle("hide",!S.live);
+}
+function gate(){var has=!!S.me;$("setup").classList.toggle("hide",has);$("app").classList.toggle("hide",!has)}
+function say(id,s,bad){$(id).textContent=s;$(id).className="msg"+(bad?" err":"")}
+function setTab(t){["sell","stock","led","his","syn"].forEach(function(s){$(s).classList.toggle("hide",s!==t)});
+  document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.t===t)})}
+document.querySelectorAll("nav button").forEach(function(b){b.onclick=function(){setTab(b.dataset.t)}});
+["sq","scust","name","q"].forEach(function(i){$(i).oninput=render});$("spay").onchange=render;
+$("namego").onclick=function(){var n=$("nm").value.trim();if(!n)return;S.me=n;save();gate();render()};
+$("role").onclick=function(){var n=prompt("Your name",S.me);if(n&&n.trim()){S.me=n.trim();save();render()}};
+
+$("slist").onclick=function(e){var d=e.target.dataset,items=arr("items");
+  if(d.p){var i=items.filter(function(x){return x.id===d.p})[0];if(!i)return;
+    if((cart[d.p]||0)>=stockOf(d.p))return say("smsg","Only "+stockOf(d.p)+" of "+i.name+" in stock.",true);cart[d.p]=(cart[d.p]||0)+1;say("smsg","")}
+  else if(d.m){cart[d.m]=Math.max(0,(cart[d.m]||0)-1)}else return;render()};
+$("sdone").onclick=function(){
+  var lines=[];arr("items").forEach(function(i){if(cart[i.id])lines.push({item:i.id,name:i.name,qty:cart[i.id],price:i.price})});
+  if(!lines.length)return say("smsg","Add at least one item.",true);
+  var pay=$("spay").value,cust=$("scust").value.trim(),total=cartTotal();
+  if(pay!=="cash"&&!cust)return say("smsg","Enter the customer’s name for credit or change.",true);
+  if(pay==="change"){var c=balances()[key(cust)]||{chg:0};if(total>c.chg+0.004)return say("smsg","Their change is only "+money(c.chg)+".",true)}
+  var id=rid(),now=Date.now(),names=lines.map(function(l){return l.qty+" × "+l.name}).join(", "),tt=Math.round(total*100)/100;
+  put("sales",id,{lines:lines,total:tt,pay:pay,cust:cust,by:S.me,ts:now});
+  if(pay==="credit"||pay==="change")put("tx","x"+id,{cust:cust,type:pay==="credit"?"credit":"buy_change",amt:tt,item:names,by:S.me,ts:now});
+  cart={};say("smsg","Sale saved.");render()};
+$("iadd").onclick=function(){var n=$("inm").value.trim(),p=parseFloat($("ipr").value),l=parseInt($("ilow").value,10),now=Date.now();
+  if(!n||!(p>=0))return say("imsg","Enter a name and a price.",true);
+  put("items",rid(),{name:n,price:Math.round(p*100)/100,low:isNaN(l)?5:l,ts:now,upd:now});
+  $("inm").value="";$("ipr").value="";say("imsg","Item added.");render()};
+$("iin").onclick=function(){var id=$("isel").value,q=parseInt($("iqty").value,10);
+  if(!id||!(q>0))return say("imsg","Pick an item and a quantity.",true);
+  put("stockin",rid(),{item:id,qty:q,by:S.me,ts:Date.now()});$("iqty").value="";say("imsg","Stock added.");render()};
+$("tlist").onclick=function(e){var d=e.target.dataset;
+  if(d.pr){var i=S.items[d.pr];if(!i)return;var v=prompt("New price for "+i.name,i.price);
+    if(v!==null&&parseFloat(v)>=0){i.price=Math.round(parseFloat(v)*100)/100;i.upd=Date.now();mark("items/"+d.pr);save();push();render()}}
+  if(d.di&&confirm("Remove this item? Past sales stay in History.")){drop("items",d.di);render()}};
+$("hsales").onclick=function(e){var id=e.target.dataset.ds;if(!id||!confirm("Delete this sale? Stock and any ledger entry for it are restored."))return;
+  drop("sales",id);drop("tx","x"+id);render()};
+$("hlist").onclick=function(e){var id=e.target.dataset.dt;if(id&&confirm("Delete this entry? This changes the customer’s balance.")){drop("tx",id);render()}};
+$("clist").onclick=function(e){var r=e.target.closest(".row");if(!r)return;$("name").value=(balances()[r.dataset.k]||{}).name||"";render()};
+$("save").onclick=function(){
+  var name=$("name").value.trim(),type=$("type").value,amt=parseFloat($("amt").value);
+  if(!name)return say("msg","Enter the customer’s name.",true);
+  if(!(amt>0))return say("msg","Enter an amount above zero.",true);
+  var c=balances()[key(name)]||{chg:0,cr:0};
+  if(type==="buy_change"&&amt>c.chg+0.004)return say("msg","That is more than their change ("+money(c.chg)+").",true);
+  if(type==="pay"&&amt>c.cr+0.004)return say("msg","That is more than they owe ("+money(c.cr)+").",true);
+  put("tx",rid(),{cust:name,type:type,amt:Math.round(amt*100)/100,item:$("item").value.trim(),by:S.me,ts:Date.now()});
+  $("amt").value="";$("item").value="";say("msg","Saved.");render()};
+
+/* ---- sync ---- */
+function pack(){return JSON.stringify({app:"saints-trek-point",v:1,from:S.me,ts:Date.now(),items:S.items,stockin:S.stockin,sales:S.sales,tx:S.tx,del:S.del})}
+function okRec(c,r){if(!r||typeof r!=="object")return false;
+  if(c==="items")return typeof r.name==="string"&&num(r.price);
+  if(c==="stockin")return typeof r.item==="string"&&num(r.qty);
+  if(c==="sales")return num(r.total)&&Array.isArray(r.lines);
+  return typeof r.cust==="string"&&num(r.amt)}
+function mergeIn(txt){
+  var o;try{o=JSON.parse(txt)}catch(e){return -1}
+  if(!o||o.app!=="saints-trek-point")return -1;
+  var add=0;
+  Object.keys(o.del||{}).forEach(function(k){if(!S.del[k]&&delOk(k)&&num(o.del[k])){S.del[k]=o.del[k];mark("d:"+k)}});
+  COLS.forEach(function(c){var inc=o[c]||{};Object.keys(inc).forEach(function(id){
+    if(S.del[c+"/"+id]||!okRec(c,inc[id]))return;var cur=S[c][id];
+    if(!cur){S[c][id]=inc[id];mark(c+"/"+id);add++}
+    else if(c==="items"&&(inc[id].upd||inc[id].ts||0)>(cur.upd||cur.ts||0)){S[c][id]=inc[id];mark(c+"/"+id)}})});
+  Object.keys(S.del).forEach(function(k){if(!delOk(k))return;var p=k.split("/");if(S[p[0]][p[1]])delete S[p[0]][p[1]]});
+  S.lastImp=Date.now();save();push();return add}
+function fname(){return "saints-trek-"+(S.me||"phone").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+"-"+new Date().toISOString().slice(0,10)+".txt"}
+function marked(){S.lastSent=Date.now();save();render()}
+$("send").onclick=function(){var txt=pack(),name=fname();
+  try{var f=new File([txt],name,{type:"text/plain"});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:"Saints Trek Point data"}).then(marked).catch(function(){});return}}catch(e){}
+  var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"text/plain"}));a.download=name;document.body.appendChild(a);a.click();a.remove();marked();
+  say("smsg2","File saved to your Downloads. Send it to your co-owner on WhatsApp.")};
+$("copy").onclick=function(){var txt=pack();
+  function fallback(){var t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand("copy")}catch(e){}t.remove()}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).catch(fallback);else fallback();
+  marked();say("smsg2","Copied. Paste it into a WhatsApp message to your co-owner.")};
+function done(n){if(n<0)return say("smsg2","That isn’t a Saints Trek Point data file.",true);
+  say("smsg2",n?("Imported "+n+" new "+(n===1?"record":"records")+"."):"Already up to date. Nothing new to add.");render()}
+$("file").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){done(mergeIn(r.result))};r.readAsText(f);this.value=""};
+$("imp").onclick=function(){var t=$("paste").value.trim();if(!t)return say("smsg2","Paste the copied text first.",true);var n=mergeIn(t);if(n>=0)$("paste").value="";done(n)};
+
+/* ---- live sync (Firebase Firestore) ---- */
+var fs=null,fsInst=null,unsubs=[],pushing=false;
+var SDK=["https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js","https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"];
+var RULES="rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /teams/{team}/{document=**} {\n      allow read, write: if true;\n    }\n  }\n}";
+function delOk(k){return /^(items|stockin|sales|tx)\/[^\/]+$/.test(k)}
+function mark(k){if(S.live&&S.dirty.indexOf(k)<0)S.dirty.push(k)}
+function lvSay(s,bad){var e=$("lvmsg");e.textContent=s;e.className="msg"+(bad?" err":"")}
+function lvStatus(s){$("lvst").textContent=s}
+function copyText(txt){function fb(){var t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand("copy")}catch(e){}t.remove()}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).catch(fb);else fb()}
+function loadSDK(ok,fail){function need(i){return i===0?!window.firebase:!(window.firebase&&firebase.firestore)}
+  var i=0;(function next(){while(i<2&&!need(i))i++;if(i>=2)return ok();var s=document.createElement("script");s.src=SDK[i++];s.onload=next;s.onerror=fail;document.head.appendChild(s)})()}
+function push(){
+  if(!fs||pushing||!S.dirty.length)return;
+  pushing=true;var keys=S.dirty.slice(0,400),b=fs.batch(),t=fs.collection("teams").doc(S.live.t);
+  keys.forEach(function(k){
+    if(k.indexOf("d:")===0){var dk=k.slice(2);if(delOk(dk))b.set(t.collection("del").doc(dk.replace("/","__")),{k:dk,ts:S.del[dk]||Date.now()})}
+    else{var p=k.split("/"),r=COLS.indexOf(p[0])>-1&&S[p[0]][p[1]];if(r)b.set(t.collection(p[0]).doc(p[1]),r)}});
+  b.commit().then(function(){S.dirty=S.dirty.filter(function(k){return keys.indexOf(k)<0});save();pushing=false;if(S.dirty.length)push()}).catch(function(){pushing=false})}
+function connect(){
+  if(!S.live||fs)return;
+  lvStatus("Connecting…");
+  loadSDK(function(){
+    try{
+      if(firebase.apps.length&&firebase.app().options.projectId!==S.live.c.projectId)return lvStatus("Close and reopen the app to switch to a different database.");
+      if(!firebase.apps.length)firebase.initializeApp(S.live.c);
+      if(!fsInst){fsInst=firebase.firestore();fsInst.enablePersistence({synchronizeTabs:true}).catch(function(){})}
+      fs=fsInst;
+      if(!S.seeded){COLS.forEach(function(c){Object.keys(S[c]).forEach(function(id){mark(c+"/"+id)})});Object.keys(S.del).forEach(function(k){mark("d:"+k)});S.seeded=true;save()}
+      var t=fs.collection("teams").doc(S.live.t);
+      COLS.forEach(function(c){unsubs.push(t.collection(c).onSnapshot(function(sn){
+        var ch=false;sn.docChanges().forEach(function(d){if(d.type==="removed")return;var id=d.doc.id,r=d.doc.data();
+          if(S.del[c+"/"+id]||!okRec(c,r))return;var cur=S[c][id];
+          if(!cur||(c==="items"&&(r.upd||r.ts||0)>(cur.upd||cur.ts||0))){S[c][id]=r;ch=true}});
+        if(ch){save();render()}
+        lvStatus(sn.metadata.fromCache?"Live sync on. Waiting for a connection; changes are saved on this phone.":"Live sync on. Up to date.")},
+        function(e){lvStatus("Sync problem ("+((e&&e.code)||"unknown")+"). Check the database rules and the config you pasted.")}))});
+      unsubs.push(t.collection("del").onSnapshot(function(sn){var ch=false;sn.docChanges().forEach(function(d){if(d.type==="removed")return;var r=d.doc.data();
+        if(!r||typeof r.k!=="string"||!delOk(r.k)||S.del[r.k])return;S.del[r.k]=num(r.ts)?r.ts:Date.now();var p=r.k.split("/");if(S[p[0]][p[1]])delete S[p[0]][p[1]];ch=true});
+        if(ch){save();render()}},function(){}));
+      push();
+    }catch(e){fs=null;lvStatus("Could not start live sync. Check the config you pasted.")}
+  },function(){lvStatus("Can’t reach the sync service. It will retry when you’re online.")})}
+function parseCfg(t){var o={};t.replace(/(\w+)\s*:\s*["']([^"']+)["']/g,function(m,k,v){o[k]=v;return m});return o}
+$("lvgo").onclick=function(){var t=$("lvin").value.trim();if(!t)return lvSay("Paste your config or setup code first.",true);
+  var live=null;
+  if(t.indexOf("STP1:")===0){try{var o=JSON.parse(decodeURIComponent(escape(atob(t.slice(5)))));if(o&&o.c&&o.c.apiKey&&o.c.projectId&&o.c.appId&&typeof o.t==="string"&&o.t.length>=12)live={c:o.c,t:o.t}}catch(e){}}
+  else{var c=parseCfg(t);if(c.apiKey&&c.projectId&&c.appId){var a=new Uint8Array(12),code="";crypto.getRandomValues(a);a.forEach(function(x){code+=("0"+x.toString(16)).slice(-2)});
+    live={c:{apiKey:c.apiKey,authDomain:c.authDomain,projectId:c.projectId,storageBucket:c.storageBucket,messagingSenderId:c.messagingSenderId,appId:c.appId},t:code}}}
+  if(!live)return lvSay("That doesn’t look like a Firebase config or a setup code.",true);
+  S.live=live;S.seeded=false;S.dirty=[];save();$("lvin").value="";lvSay("Connected. Copy the setup code and send it to your co-owner.");render();connect()};
+$("lvcode").onclick=function(){if(!S.live)return;copyText("STP1:"+btoa(unescape(encodeURIComponent(JSON.stringify(S.live)))));lvSay("Copied. Paste it into WhatsApp to your co-owner. Anyone with this code can see and change your data.")};
+$("lvrules").onclick=function(){copyText(RULES);lvSay("Rules copied. Paste them in the Rules tab of Firestore and tap Publish.")};
+$("lvoffbtn").onclick=function(){if(!confirm("Disconnect this phone? Its data stays here but stops syncing."))return;unsubs.forEach(function(u){u()});unsubs=[];fs=null;S.live=null;S.dirty=[];S.seeded=false;save();render();lvSay("Disconnected.")};
+window.addEventListener("online",function(){if(S.live){if(fs)push();else connect()}});
+setInterval(function(){if(S.live){if(fs)push();else connect()}},15000);
+
+if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+load();save();gate();render();if(S.live)connect();
+})();
+</script>
+</body>
+</html>
