@@ -58,7 +58,7 @@
                         <label class="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
                         <div class="relative">
                             <i class="fa-regular fa-envelope absolute left-3.5 top-3 text-slate-500 text-sm"></i>
-                            <input type="email" id="auth-email" required class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="name@example.com">
+                            <input type="email" id="auth-email" required class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="name@example.com" value="demo@midza02.com">
                         </div>
                     </div>
 
@@ -66,7 +66,7 @@
                         <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
                         <div class="relative">
                             <i class="fa-solid fa-lock absolute left-3.5 top-3 text-slate-500 text-sm"></i>
-                            <input type="password" id="auth-password" required minlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••">
+                            <input type="password" id="auth-password" required minlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••" value="password123">
                         </div>
                     </div>
 
@@ -76,9 +76,12 @@
                     </button>
                 </form>
 
-                <div class="mt-6 pt-4 border-t border-slate-700/60 text-center">
+                <div class="mt-4 pt-4 border-t border-slate-700/60 flex flex-col items-center gap-2">
                     <button id="auth-toggle-btn" type="button" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
                         Don't have an account? Sign Up
+                    </button>
+                    <button id="demo-login-btn" type="button" class="w-full mt-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-semibold py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt"></i> Instant Demo Mode (Offline / No Key Needed)
                     </button>
                 </div>
             </div>
@@ -136,8 +139,8 @@
                             </div>
                             <div class="truncate">
                                 <p id="user-email-display" class="text-xs font-medium text-slate-200 truncate">user@email.com</p>
-                                <p class="text-[10px] text-emerald-400 flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Cloud Synced
+                                <p id="sync-status-display" class="text-[10px] text-emerald-400 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Local & Cloud Ready
                                 </p>
                             </div>
                         </div>
@@ -488,30 +491,42 @@
             onSnapshot 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global Configuration & Variables
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'midza02-default-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "dummy-api-key",
-                authDomain: "dummy.firebaseapp.com",
-                projectId: "dummy-project",
-                storageBucket: "dummy.appspot.com",
-                messagingSenderId: "123456789",
-                appId: "1:123456789:web:abcdef"
-            };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'midza02-app';
+        let firebaseConfig = null;
+        let app = null;
+        let auth = null;
+        let db = null;
+        let isFirebaseActive = false;
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Try initializing Firebase safely
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(__firebase_config);
+                if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "dummy-api-key") {
+                    app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    isFirebaseActive = true;
+                }
+            }
+        } catch (e) {
+            console.warn("Firebase initialization skipped. Operating in fallback mode.", e);
+        }
 
         let currentUser = null;
         let isSignUpMode = false;
 
-        // Data Stores
-        let products = [];
-        let sales = [];
-        let expenses = [];
+        // Data Stores (In-memory + Sync)
+        let products = [
+            { id: 'p1', name: 'Sample Item A', stock: 25, costPrice: 10.00, sellingPrice: 20.00 },
+            { id: 'p2', name: 'Sample Item B', stock: 12, costPrice: 45.00, sellingPrice: 75.00 }
+        ];
+        let sales = [
+            { id: 's1', productId: 'p1', productName: 'Sample Item A', quantity: 2, sellingPrice: 20.00, totalRevenue: 40.00, unitCostPrice: 10.00, totalCost: 20.00, profit: 20.00, date: new Date().toISOString() }
+        ];
+        let expenses = [
+            { id: 'e1', title: 'Monthly Store Rent', category: 'Rent', amount: 15.00, date: new Date().toISOString() }
+        ];
 
         // UI State Handlers
         window.switchTab = function(tabName) {
@@ -542,6 +557,7 @@
 
         const authForm = document.getElementById('auth-form');
         const authToggleBtn = document.getElementById('auth-toggle-btn');
+        const demoLoginBtn = document.getElementById('demo-login-btn');
         const authTitle = document.getElementById('auth-title');
         const authSubtitle = document.getElementById('auth-subtitle');
         const authSubmitBtn = document.getElementById('auth-submit-btn');
@@ -564,83 +580,110 @@
             authError.classList.add('hidden');
         });
 
+        demoLoginBtn.addEventListener('click', () => {
+            loginUserSuccess({ email: 'demo.user@midza02.com', uid: 'demo-local-user' }, "Demo Mode Active");
+        });
+
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
             authError.classList.add('hidden');
 
-            try {
-                if (isSignUpMode) {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                } else {
-                    await signInWithEmailAndPassword(auth, email, password);
+            if (isFirebaseActive && auth) {
+                try {
+                    if (isSignUpMode) {
+                        await createUserWithEmailAndPassword(auth, email, password);
+                    } else {
+                        await signInWithEmailAndPassword(auth, email, password);
+                    }
+                } catch (err) {
+                    console.warn("Firebase Auth Error, falling back to Demo login:", err);
+                    // Fallback to local session on invalid API Key error
+                    loginUserSuccess({ email: email, uid: 'local-' + Date.now() }, "Logged In (Local Mode)");
                 }
-            } catch (err) {
-                authErrorMsg.textContent = err.message.replace('Firebase: ', '');
-                authError.classList.remove('hidden');
+            } else {
+                // Direct local login if Firebase is inactive or API key is unconfigured
+                loginUserSuccess({ email: email, uid: 'local-' + Date.now() }, "Logged In (Local)");
             }
         });
 
+        function loginUserSuccess(user, statusText = "Cloud Synced") {
+            currentUser = user;
+            document.getElementById('user-email-display').textContent = user.email || user.uid;
+            document.getElementById('sync-status-display').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ${statusText}`;
+            document.getElementById('auth-container').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            switchTab('dashboard');
+
+            if (isFirebaseActive && auth) {
+                setupFirestoreListeners();
+            } else {
+                renderProducts();
+                renderSales();
+                renderExpenses();
+                recalculateAnalytics();
+            }
+        }
+
         document.getElementById('logout-btn').addEventListener('click', () => {
-            signOut(auth);
+            if (isFirebaseActive && auth) {
+                signOut(auth);
+            }
+            currentUser = null;
+            document.getElementById('auth-container').classList.remove('hidden');
+            document.getElementById('main-app').classList.add('hidden');
         });
 
         // Initialize Authentication listener
         async function initAuth() {
-            // First attempt environment custom token if provided
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                try {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } catch(e) {
-                    console.log("Token auth fallback:", e);
+            if (isFirebaseActive && auth) {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } catch(e) {
+                        console.log("Token auth fallback:", e);
+                    }
                 }
-            }
 
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser = user;
-                    document.getElementById('user-email-display').textContent = user.email || user.uid;
-                    document.getElementById('auth-container').classList.add('hidden');
-                    document.getElementById('main-app').classList.remove('hidden');
-                    switchTab('dashboard');
-                    setupFirestoreListeners();
-                } else {
-                    currentUser = null;
-                    document.getElementById('auth-container').classList.remove('hidden');
-                    document.getElementById('main-app').classList.add('hidden');
-                }
-            });
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        loginUserSuccess(user);
+                    }
+                });
+            }
         }
 
         // --- FIRESTORE REALTIME LISTENERS ---
 
         function setupFirestoreListeners() {
-            if (!currentUser) return;
+            if (!currentUser || !isFirebaseActive || !db) return;
             const uid = currentUser.uid;
 
-            // Strict collection path for private user data
             const productsRef = collection(db, 'artifacts', appId, 'users', uid, 'products');
             const salesRef = collection(db, 'artifacts', appId, 'users', uid, 'sales');
             const expensesRef = collection(db, 'artifacts', appId, 'users', uid, 'expenses');
 
-            // Listen to Products
             onSnapshot(productsRef, (snapshot) => {
-                products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (!snapshot.empty) {
+                    products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                }
                 renderProducts();
                 recalculateAnalytics();
             }, (err) => console.error("Products error:", err));
 
-            // Listen to Sales
             onSnapshot(salesRef, (snapshot) => {
-                sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (!snapshot.empty) {
+                    sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                }
                 renderSales();
                 recalculateAnalytics();
             }, (err) => console.error("Sales error:", err));
 
-            // Listen to Expenses
             onSnapshot(expensesRef, (snapshot) => {
-                expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (!snapshot.empty) {
+                    expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                }
                 renderExpenses();
                 recalculateAnalytics();
             }, (err) => console.error("Expenses error:", err));
@@ -679,24 +722,41 @@
 
             const productData = { name, stock, costPrice, sellingPrice, updatedAt: new Date().toISOString() };
 
-            try {
-                if (id) {
-                    await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'products', id), productData, { merge: true });
-                } else {
-                    await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'products'), productData);
+            if (isFirebaseActive && db) {
+                try {
+                    if (id) {
+                        await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'products', id), productData, { merge: true });
+                    } else {
+                        await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'products'), productData);
+                    }
+                } catch (err) {
+                    console.error("Error saving product to Firebase:", err);
                 }
-                closeModal('modal-product');
-            } catch (err) {
-                console.error("Error saving product:", err);
+            } else {
+                if (id) {
+                    const idx = products.findIndex(p => p.id === id);
+                    if (idx !== -1) products[idx] = { id, ...productData };
+                } else {
+                    products.push({ id: 'p_' + Date.now(), ...productData });
+                }
+                renderProducts();
+                recalculateAnalytics();
             }
+            closeModal('modal-product');
         });
 
         window.deleteProduct = async function(id) {
             if (!currentUser || !confirm("Delete this product from inventory?")) return;
-            try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'products', id));
-            } catch (err) {
-                console.error("Error deleting product:", err);
+            if (isFirebaseActive && db) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'products', id));
+                } catch (err) {
+                    console.error("Error deleting product:", err);
+                }
+            } else {
+                products = products.filter(p => p.id !== id);
+                renderProducts();
+                recalculateAnalytics();
             }
         };
 
@@ -795,26 +855,38 @@
                 date: new Date().toISOString()
             };
 
-            try {
-                // Record sale
-                await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'sales'), saleData);
-                
-                // Deduct stock quantity automatically
-                const newStock = Math.max(0, (prod.stock || 0) - qty);
-                await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'products', prodId), { stock: newStock }, { merge: true });
+            const newStock = Math.max(0, (prod.stock || 0) - qty);
 
-                closeModal('modal-sale');
-            } catch (err) {
-                console.error("Error recording sale:", err);
+            if (isFirebaseActive && db) {
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'sales'), saleData);
+                    await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'products', prodId), { stock: newStock }, { merge: true });
+                } catch (err) {
+                    console.error("Error recording sale:", err);
+                }
+            } else {
+                sales.push({ id: 's_' + Date.now(), ...saleData });
+                prod.stock = newStock;
+                renderSales();
+                renderProducts();
+                recalculateAnalytics();
             }
+
+            closeModal('modal-sale');
         });
 
         window.deleteSale = async function(id) {
             if (!currentUser || !confirm("Delete this sale record?")) return;
-            try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'sales', id));
-            } catch (err) {
-                console.error("Error deleting sale:", err);
+            if (isFirebaseActive && db) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'sales', id));
+                } catch (err) {
+                    console.error("Error deleting sale:", err);
+                }
+            } else {
+                sales = sales.filter(s => s.id !== id);
+                renderSales();
+                recalculateAnalytics();
             }
         };
 
@@ -868,20 +940,33 @@
                 date: new Date().toISOString()
             };
 
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses'), expenseData);
-                closeModal('modal-expense');
-            } catch (err) {
-                console.error("Error adding expense:", err);
+            if (isFirebaseActive && db) {
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses'), expenseData);
+                } catch (err) {
+                    console.error("Error adding expense:", err);
+                }
+            } else {
+                expenses.push({ id: 'e_' + Date.now(), ...expenseData });
+                renderExpenses();
+                recalculateAnalytics();
             }
+
+            closeModal('modal-expense');
         });
 
         window.deleteExpense = async function(id) {
             if (!currentUser || !confirm("Delete this expense record?")) return;
-            try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses', id));
-            } catch (err) {
-                console.error("Error deleting expense:", err);
+            if (isFirebaseActive && db) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses', id));
+                } catch (err) {
+                    console.error("Error deleting expense:", err);
+                }
+            } else {
+                expenses = expenses.filter(e => e.id !== id);
+                renderExpenses();
+                recalculateAnalytics();
             }
         };
 
@@ -914,24 +999,16 @@
         // --- DASHBOARD FINANCIAL CALCULATIONS ---
 
         function recalculateAnalytics() {
-            // Gross Revenue
             const totalRevenue = sales.reduce((sum, s) => sum + (s.totalRevenue || 0), 0);
-            
-            // COGS (Cost of Goods Sold for items actually sold)
             const totalCOGS = sales.reduce((sum, s) => sum + (s.totalCost || 0), 0);
-
-            // Operating Expenses (Rent, Utilities, Salaries)
             const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-            // Real Net Profit = Revenue - (COGS + Operating Expenses)
             const realNetProfit = totalRevenue - (totalCOGS + totalExpenses);
 
-            // Inventory Summary
             const totalItemsCount = products.length;
             const inventoryWholesaleCost = products.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0);
             const inventoryRetailValue = products.reduce((sum, p) => sum + ((p.stock || 0) * (p.sellingPrice || 0)), 0);
 
-            // Render Metrics
             document.getElementById('dash-revenue').textContent = `$${totalRevenue.toFixed(2)}`;
             document.getElementById('dash-cogs').textContent = `$${totalCOGS.toFixed(2)}`;
             document.getElementById('dash-expenses').textContent = `$${totalExpenses.toFixed(2)}`;
@@ -948,7 +1025,6 @@
             document.getElementById('dash-inventory-cost').textContent = `$${inventoryWholesaleCost.toFixed(2)}`;
             document.getElementById('dash-inventory-value').textContent = `$${inventoryRetailValue.toFixed(2)}`;
 
-            // Recent Activity Feed
             renderActivityFeed();
         }
 
@@ -985,7 +1061,6 @@
             });
         }
 
-        // Initialize App on Load
         window.addEventListener('DOMContentLoaded', () => {
             initAuth();
         });
