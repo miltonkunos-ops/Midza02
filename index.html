@@ -276,7 +276,7 @@ pre{font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre;overflo
 
 <script>
 (function(){
-var SK="stp_local_v4",COLS=["items","stockin","sales","tx","exp","audit","users"];
+var SK="stp_local_v5",COLS=["items","stockin","sales","tx","exp","audit","users"];
 var S={items:{},stockin:{},sales:{},tx:{},exp:{},audit:{},users:{},del:{},me:"",role:"",userKey:"",lastImp:0,lastSent:0,set:{biz:"Saints Trek Point",pw:32,foot:"Thank you!"},dirty:[],live:null,seeded:false};
 var memOnly=false,cart={};
 var $=function(i){return document.getElementById(i)};
@@ -586,7 +586,7 @@ $("pset").onclick=function(){S.set={biz:$("pbiz").value.trim()||"Saints Trek Poi
 $("ptest").onclick=function(){showReceipt({ts:Date.now(),by:S.me,total:2.5,pay:"cash",cust:"",lines:[{qty:1,name:"Test item",price:2.5}]})};
 
 /* ---- sync ---- */
-function pack(){return JSON.stringify({app:"saints-trek-point",v:4,from:S.me,ts:Date.now(),items:S.items,stockin:S.stockin,sales:S.sales,tx:S.tx,exp:S.exp,audit:S.audit,users:S.users,del:S.del})}
+function pack(){return JSON.stringify({app:"saints-trek-point",v:5,from:S.me,ts:Date.now(),items:S.items,stockin:S.stockin,sales:S.sales,tx:S.tx,exp:S.exp,audit:S.audit,users:S.users,del:S.del})}
 function mergeIn(txt){
   var o;try{o=JSON.parse(txt)}catch(e){return -1}
   if(!o||o.app!=="saints-trek-point")return -1;
