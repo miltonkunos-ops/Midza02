@@ -1,4 +1,4 @@
-var CACHE_NAME = "saints-trek-v3"; // Bumping version from v2 to v3
+var CACHE_NAME = "saints-trek-v4";
 var ASSETS = [
   "./",
   "./index.html",
