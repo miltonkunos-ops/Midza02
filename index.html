@@ -207,7 +207,7 @@ pre{font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre;overflo
 <div class="card">
 <h2>Live sync</h2>
 <div id="lvoff">
-<div class="sub">Connect both phones to a free online database so sales and stock update on both phones automatically. It still works offline and catches up when you’re back online.</div>
+<div class="sub">Connect both phones to a free online database so sales, stock, and users update automatically on both phones.</div>
 <label for="lvin">Paste your Firebase config, or the setup code from your co-owner</label>
 <textarea id="lvin" placeholder="Paste here"></textarea>
 <button class="go" id="lvgo">Connect</button>
@@ -276,7 +276,7 @@ pre{font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre;overflo
 
 <script>
 (function(){
-var SK="stp_local_v3",COLS=["items","stockin","sales","tx","exp","audit","users"];
+var SK="stp_local_v4",COLS=["items","stockin","sales","tx","exp","audit","users"];
 var S={items:{},stockin:{},sales:{},tx:{},exp:{},audit:{},users:{},del:{},me:"",role:"",userKey:"",lastImp:0,lastSent:0,set:{biz:"Saints Trek Point",pw:32,foot:"Thank you!"},dirty:[],live:null,seeded:false};
 var memOnly=false,cart={};
 var $=function(i){return document.getElementById(i)};
@@ -363,10 +363,9 @@ $("authgo").onclick = async function(){
     var n = $("authn").value.trim();
     if(!n) return say("authmsg", "Enter full name.", true);
     var passHash = await hashPass(p);
-    S.users[u] = { name: n, user: u, pass: passHash, role: "Administrator", ts: Date.now() };
+    put("users", u, { name: n, user: u, pass: passHash, role: "Administrator", ts: Date.now() }, "Admin Created", n);
     S.me = n; S.role = "Administrator"; S.userKey = u;
     save();
-    logAudit("System Initialized", "Created Admin account: " + n);
     checkAuthShell();
   } else {
     var passHash = await hashPass(p);
@@ -394,11 +393,7 @@ $("regGo").onclick = async function(){
   if(S.users[u]) return say("regMsg", "Username already exists.", true);
 
   var passHash = await hashPass(p);
-  S.users[u] = { name: n, user: u, pass: passHash, role: r, ts: Date.now() };
-  mark("users/"+u);
-  save();
-  push();
-  logAudit("User Registered", "Added " + r + ": " + n + " (" + u + ")");
+  put("users", u, { name: n, user: u, pass: passHash, role: r, ts: Date.now() }, "User Registered", n + " (" + r + ")");
   $("rname").value = ""; $("ruser").value = ""; $("rpass").value = "";
   say("regMsg", "User registered successfully!");
   render();
@@ -591,7 +586,7 @@ $("pset").onclick=function(){S.set={biz:$("pbiz").value.trim()||"Saints Trek Poi
 $("ptest").onclick=function(){showReceipt({ts:Date.now(),by:S.me,total:2.5,pay:"cash",cust:"",lines:[{qty:1,name:"Test item",price:2.5}]})};
 
 /* ---- sync ---- */
-function pack(){return JSON.stringify({app:"saints-trek-point",v:3,from:S.me,ts:Date.now(),items:S.items,stockin:S.stockin,sales:S.sales,tx:S.tx,exp:S.exp,audit:S.audit,users:S.users,del:S.del})}
+function pack(){return JSON.stringify({app:"saints-trek-point",v:4,from:S.me,ts:Date.now(),items:S.items,stockin:S.stockin,sales:S.sales,tx:S.tx,exp:S.exp,audit:S.audit,users:S.users,del:S.del})}
 function mergeIn(txt){
   var o;try{o=JSON.parse(txt)}catch(e){return -1}
   if(!o||o.app!=="saints-trek-point")return -1;
@@ -600,16 +595,54 @@ function mergeIn(txt){
   COLS.forEach(function(c){var inc=o[c]||{};Object.keys(inc).forEach(function(id){
     if(S.del[c+"/"+id])return;if(!S[c][id]){S[c][id]=inc[id];mark(c+"/"+id);add++}})});
   Object.keys(S.del).forEach(function(k){var p=k.split("/");if(S[p[0]]&&S[p[0]][p[1]])delete S[p[0]][p[1]]});
-  S.lastImp=Date.now();save();return add}
+  S.lastImp=Date.now();save();checkAuthShell();return add}
 $("send").onclick=function(){var txt=pack(),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"text/plain"}));a.download="st-backup.txt";document.body.appendChild(a);a.click();a.remove();say("smsg2","Backup downloaded.")};
 $("copy").onclick=function(){navigator.clipboard.writeText(pack());say("smsg2","Copied data to clipboard.")};
 $("file").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var n=mergeIn(r.result);say("smsg2","Imported "+n+" records.");render()};r.readAsText(f)};
 $("imp").onclick=function(){var n=mergeIn($("paste").value.trim());say("smsg2","Imported "+n+" records.");render()};
 
-function push(){/* cloud sync hook */};
-function mark(k){if(S.dirty.indexOf(k)<0)S.dirty.push(k)};
+/* ---- live sync (Firebase Firestore) ---- */
+var fs=null,fsInst=null,unsubs=[],pushing=false;
+var SDK=["https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js","https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"];
+function delOk(k){return /^(items|stockin|sales|tx|exp|audit|users)\/[^\/]+$/.test(k)}
+function mark(k){if(S.live&&S.dirty.indexOf(k)<0)S.dirty.push(k)}
+function lvSay(s,bad){var e=$("lvmsg");e.textContent=s;e.className="msg"+(bad?" err":"")}
+function lvStatus(s){$("lvst").textContent=s}
+function copyText(txt){navigator.clipboard.writeText(txt)}
+function loadSDK(ok,fail){function need(i){return i===0?!window.firebase:!(window.firebase&&firebase.firestore)}
+  var i=0;(function next(){while(i<2&&!need(i))i++;if(i>=2)return ok();var s=document.createElement("script");s.src=SDK[i++];s.onload=next;s.onerror=fail;document.head.appendChild(s)})()}
+function push(){
+  if(!fs||pushing||!S.dirty.length)return;
+  pushing=true;var keys=S.dirty.slice(0,400),b=fs.batch(),t=fs.collection("teams").doc(S.live.t);
+  keys.forEach(function(k){
+    if(k.indexOf("d:")===0){var dk=k.slice(2);if(delOk(dk))b.set(t.collection("del").doc(dk.replace("/","__")),{k:dk,ts:S.del[dk]||Date.now()})}
+    else{var p=k.split("/"),r=COLS.indexOf(p[0])>-1&&S[p[0]][p[1]];if(r)b.set(t.collection(p[0]).doc(p[1]),r)}});
+  b.commit().then(function(){S.dirty=S.dirty.filter(function(k){return keys.indexOf(k)<0});save();pushing=false;if(S.dirty.length)push()}).catch(function(){pushing=false})}
+function connect(){
+  if(!S.live||fs)return;
+  lvStatus("Connecting…");
+  loadSDK(function(){
+    try{
+      if(!firebase.apps.length)firebase.initializeApp(S.live.c);
+      if(!fsInst){fsInst=firebase.firestore();fsInst.enablePersistence({synchronizeTabs:true}).catch(function(){})}
+      fs=fsInst;
+      if(!S.seeded){COLS.forEach(function(c){Object.keys(S[c]||{}).forEach(function(id){mark(c+"/"+id)})});Object.keys(S.del).forEach(function(k){mark("d:"+k)});S.seeded=true;save()}
+      var t=fs.collection("teams").doc(S.live.t);
+      COLS.forEach(function(c){unsubs.push(t.collection(c).onSnapshot(function(sn){
+        var ch=false;sn.docChanges().forEach(function(d){if(d.type==="removed")return;var id=d.doc.id,r=d.doc.data();
+          if(S.del[c+"/"+id])return;var cur=S[c][id];
+          if(!cur){S[c][id]=r;ch=true}});
+        if(ch){save();checkAuthShell();}
+        lvStatus("Live sync on. Up to date.")},
+        function(e){lvStatus("Sync problem.")}))});
+      push();
+    }catch(e){fs=null;lvStatus("Could not start live sync.")}
+  },function(){lvStatus("Can’t reach sync service.")})}
 
-load();$("pbiz").value=S.set.biz;$("ppw").value=String(S.set.pw);$("pfoot").value=S.set.foot;save();checkAuthShell();
+$("lvgo").onclick=function(){var t=$("lvin").value.trim();if(!t)return;
+  S.live={c:JSON.parse(t),t:"team_1"};S.seeded=false;S.dirty=[];save();connect();};
+
+load();$("pbiz").value=S.set.biz;$("ppw").value=String(S.set.pw);$("pfoot").value=S.set.foot;save();checkAuthShell();if(S.live)connect();
 })();
 </script>
 </body>
