@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saints Trek Point</title>
+<meta name="theme-color" content="#1f6f4a">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1d1d1b;--mute:#6b6a64;--line:#e3e0d6;--acc:#1f6f4a;--accink:#fff;--bad:#b3412e;--chg:#1f6f4a;--cr:#b3412e;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#161614;--card:#222220;--ink:#f1efe8;--mute:#a09e94;--line:#383733;--acc:#4fb582;--accink:#0d1f16;--bad:#e08572;--chg:#4fb582;--cr:#e08572;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+h1{font-size:20px;margin:0}h2{font-size:15px;margin:0 0 8px}
+.role{font-size:12px;padding:5px 12px;border-radius:99px;background:var(--acc);color:var(--accink);border:0}
+nav{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
+nav button{flex:1 0 auto;padding:10px 12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font-size:13px}
+nav button.on{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:90px}
+.go{width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;background:var(--acc);color:var(--accink);font-size:16px;font-weight:600}
+.go.alt{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}.sub{font-size:13px;color:var(--mute)}
+.chg{color:var(--chg);font-weight:600}.cr{color:var(--cr);font-weight:600}
+.msg{font-size:14px;margin-top:10px;min-height:18px}.err{color:var(--bad)}
+.del,.lnk{border:0;background:none;color:var(--bad);font-size:13px;padding:4px}.lnk{color:var(--acc)}
+.qty{display:flex;align-items:center;gap:8px}.qty button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:20px}
+.qty span{min-width:22px;text-align:center;font-weight:600}
+.tot{display:flex;gap:10px}.tot>div{flex:1}.tot b{display:block;font-size:20px}
+.low{color:var(--bad);font-weight:600}.hide{display:none}.sc{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.sc b{display:block;font-size:19px}
+.warn{
