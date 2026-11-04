@@ -38,6 +38,9 @@ textarea{min-height:90px}
 .tot{display:flex;gap:10px}.tot>div{flex:1}.tot b{display:block;font-size:20px}
 .low{color:var(--bad);font-weight:600}.hide{display:none}.sc{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.sc b{display:block;font-size:19px}
 .warn{border-color:var(--bad);color:var(--bad);font-size:14px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:14px;z-index:20}.ov.hide{display:none}
+.ov .box{background:var(--card);border-radius:16px;padding:16px;width:100%;max-width:420px;max-height:90vh;overflow:auto}
+pre{font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre;overflow-x:auto;background:var(--bg);padding:10px;border-radius:10px;margin:8px 0}
 </style>
 </head>
 <body>
@@ -69,6 +72,7 @@ textarea{min-height:90px}
 <div id="sbal" class="sub" style="margin-top:6px"></div>
 <button class="go" id="sdone">Complete sale</button>
 <div class="msg" id="smsg"></div>
+<button class="go alt hide" id="prlast">Print receipt for last sale</button>
 </div>
 </section>
 
@@ -185,14 +189,32 @@ Anyone who has the setup code can see and change your data, so send it only to y
 <div class="msg" id="smsg2"></div>
 <div class="sub" id="lastimp"></div>
 </div>
+<div class="card">
+<h2>Receipt printing</h2>
+<div class="sub">For a Bluetooth receipt printer: install the free RawBT app from the Play Store, pair your printer in Android’s Bluetooth settings, then choose it inside RawBT. The free version of RawBT may print a short notice at the bottom of each receipt.</div>
+<label for="pbiz">Shop name on the receipt</label><input id="pbiz">
+<label for="ppw">Paper width</label>
+<select id="ppw"><option value="32">58 mm (small)</option><option value="48">80 mm (wide)</option></select>
+<label for="pfoot">Message at the bottom</label><input id="pfoot">
+<button class="go" id="pset">Save receipt settings</button>
+<button class="go alt" id="ptest">Print a test receipt</button>
+<div class="msg" id="pmsg"></div>
+</div>
 <div class="card sub">Do this at the end of every day, in both directions: you send, they import, they send, you import. Sending also works as a backup if your phone is lost.</div>
 </section>
 </div>
 </main>
+<div id="rcpt" class="ov hide"><div class="box">
+<h2>Receipt</h2><pre id="rtxt"></pre>
+<button class="go" id="rprint">Print with RawBT</button>
+<button class="go alt" id="rshare">Share as text</button>
+<button class="go alt" id="rclose">Close</button>
+<div class="msg" id="rmsg"></div>
+</div></div>
 <script>
 (function(){
 var SK="stp_local_v1",COLS=["items","stockin","sales","tx","exp"];
-var S={items:{},stockin:{},sales:{},tx:{},exp:{},del:{},me:"",lastImp:0,lastSent:0,dirty:[],live:null,seeded:false};
+var S={items:{},stockin:{},sales:{},tx:{},exp:{},del:{},me:"",lastImp:0,lastSent:0,set:{biz:"Saints Trek Point",pw:32,foot:"Thank you!"},dirty:[],live:null,seeded:false};
 var memOnly=false,cart={};
 var $=function(i){return document.getElementById(i)};
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
@@ -237,7 +259,7 @@ function render(){
   var cb=m[key($("name").value)];$("bal").textContent=cb?("Now: change "+money(cb.chg)+" · owes "+money(cb.cr)):"";
   var hs=arr("sales").sort(function(a,b){return b.ts-a.ts}).slice(0,100);
   $("hsales").innerHTML=hs.length?hs.map(function(s){
-    return '<div class="row"><div><b>'+money(s.total)+'</b> <span class="sub">· '+esc(s.pay)+(s.cust?' · '+esc(s.cust):'')+(s.by?' · by '+esc(s.by):'')+(s.unk===false?' · profit '+money(s.total-(s.cogs||0)):'')+'</span><div class="sub">'+when(s.ts)+'<br>'+(s.lines||[]).map(function(l){return esc(l.qty+" × "+l.name)}).join(", ")+'</div></div><button class="del" data-ds="'+esc(s.id)+'">Delete</button></div>'}).join(""):'<div class="sub">No sales yet.</div>';
+    return '<div class="row"><div><b>'+money(s.total)+'</b> <span class="sub">· '+esc(s.pay)+(s.cust?' · '+esc(s.cust):'')+(s.by?' · by '+esc(s.by):'')+(s.unk===false?' · profit '+money(s.total-(s.cogs||0)):'')+'</span><div class="sub">'+when(s.ts)+'<br>'+(s.lines||[]).map(function(l){return esc(l.qty+" × "+l.name)}).join(", ")+'</div></div><div><button class="lnk" data-rs="'+esc(s.id)+'">Receipt</button><button class="del" data-ds="'+esc(s.id)+'">Delete</button></div></div>'}).join(""):'<div class="sub">No sales yet.</div>';
   var h=arr("tx").sort(function(a,b){return b.ts-a.ts}).slice(0,100);
   $("hlist").innerHTML=h.length?h.map(function(t){
     return '<div class="row"><div><b>'+esc(t.cust)+'</b> <span class="sub">· '+esc(LABEL[t.type]||t.type)+(t.by?' · by '+esc(t.by):'')+'</span><div class="sub">'+when(t.ts)+(t.item?' · '+esc(t.item):'')+'</div></div><div style="text-align:right"><div class="'+(t.type==="change"||t.type==="pay"?'chg':'cr')+'">'+money(t.amt)+'</div><button class="del" data-dt="'+esc(t.id)+'">Delete</button></div></div>'}).join(""):'<div class="sub">No entries yet.</div>';
@@ -286,7 +308,7 @@ $("sdone").onclick=function(){
   var cg=0,uk=false;lines.forEach(function(l){if(l.cost==null)uk=true;else cg+=l.qty*l.cost});
   put("sales",id,{lines:lines,total:tt,cogs:Math.round(cg*100)/100,unk:uk,pay:pay,cust:cust,by:S.me,ts:now});
   if(pay==="credit"||pay==="change")put("tx","x"+id,{cust:cust,type:pay==="credit"?"credit":"buy_change",amt:tt,item:names,by:S.me,ts:now});
-  cart={};say("smsg","Sale saved.");render()};
+  cart={};lastSale=id;$("prlast").classList.remove("hide");say("smsg","Sale saved.");render()};
 $("iadd").onclick=function(){var n=$("inm").value.trim(),p=parseFloat($("ipr").value),l=parseInt($("ilow").value,10),now=Date.now();
   if(!n||!(p>=0))return say("imsg","Enter a name and a price.",true);
   put("items",rid(),{name:n,price:Math.round(p*100)/100,low:isNaN(l)?5:l,cost:parseFloat($("icost").value)>=0?Math.round(parseFloat($("icost").value)*100)/100:null,ts:now,upd:now});
@@ -300,7 +322,7 @@ $("tlist").onclick=function(e){var d=e.target.dataset;
   if(d.pc){var j=S.items[d.pc];if(!j)return;var cv0=prompt("Cost price for "+j.name+" (what you pay per item)",typeof j.cost==="number"?j.cost:"");
     if(cv0!==null&&parseFloat(cv0)>=0){j.cost=Math.round(parseFloat(cv0)*100)/100;j.upd=Date.now();mark("items/"+d.pc);save();push();render()}}
   if(d.di&&confirm("Remove this item? Past sales stay in History.")){drop("items",d.di);render()}};
-$("hsales").onclick=function(e){var id=e.target.dataset.ds;if(!id||!confirm("Delete this sale? Stock and any ledger entry for it are restored."))return;
+$("hsales").onclick=function(e){if(e.target.dataset.rs){var rs=S.sales[e.target.dataset.rs];if(rs)showReceipt(rs);return}var id=e.target.dataset.ds;if(!id||!confirm("Delete this sale? Stock and any ledger entry for it are restored."))return;
   drop("sales",id);drop("tx","x"+id);render()};
 $("hlist").onclick=function(e){var id=e.target.dataset.dt;if(id&&confirm("Delete this entry? This changes the customer’s balance.")){drop("tx",id);render()}};
 $("clist").onclick=function(e){var r=e.target.closest(".row");if(!r)return;$("name").value=(balances()[r.dataset.k]||{}).name||"";render()};
@@ -313,6 +335,36 @@ $("save").onclick=function(){
   if(type==="pay"&&amt>c.cr+0.004)return say("msg","That is more than they owe ("+money(c.cr)+").",true);
   put("tx",rid(),{cust:name,type:type,amt:Math.round(amt*100)/100,item:$("item").value.trim(),by:S.me,ts:Date.now()});
   $("amt").value="";$("item").value="";say("msg","Saved.");render()};
+
+/* ---- receipts ---- */
+var lastSale=null,curRcpt="";
+function ascii(t){return String(t).replace(/[\u00A0\u2009\u202F]/g," ").replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/\u00D7/g,"x").replace(/[\u2013\u2014]/g,"-").replace(/[^\x20-\x7E\n]/g,"?")}
+function padLR(l,r,w){l=ascii(l);r=ascii(r);if(l.length+r.length+1>w)l=l.slice(0,Math.max(1,w-r.length-1));return l+Array(w-l.length-r.length+1).join(" ")+r}
+function ctr(t,w){t=ascii(t).slice(0,w);return Array(Math.floor((w-t.length)/2)+1).join(" ")+t}
+function receiptText(s){
+  var w=S.set.pw||32,ln=Array(w+1).join("-"),o=[];
+  o.push(ctr(S.set.biz||"Receipt",w));o.push(ctr(new Date(s.ts).toLocaleString(),w));
+  if(s.by)o.push("Served by: "+s.by);
+  if(s.cust)o.push("Customer: "+s.cust);
+  o.push(ln);
+  (s.lines||[]).forEach(function(l){o.push(padLR(l.qty+" x "+l.name,money(l.qty*l.price),w));if(l.qty>1)o.push("  @ "+money(l.price)+" each")});
+  o.push(ln);o.push(padLR("TOTAL",money(s.total),w));
+  o.push("Paid: "+({cash:"Cash",credit:"On credit",change:"From customer's change"}[s.pay]||s.pay));
+  var b=s.cust&&balances()[key(s.cust)];
+  if(b&&b.cr>0.004)o.push("Owes now: "+money(b.cr));
+  if(b&&b.chg>0.004)o.push("Change held: "+money(b.chg));
+  o.push(ln);o.push(ctr(S.set.foot||"Thank you!",w));
+  return ascii(o.join("\n"))}
+function showReceipt(s){curRcpt=receiptText(s);$("rtxt").textContent=curRcpt;$("rmsg").textContent="";$("rcpt").classList.remove("hide")}
+$("rclose").onclick=function(){$("rcpt").classList.add("hide")};
+$("rprint").onclick=function(){var by=[0x1B,0x40],i,bin="";for(i=0;i<curRcpt.length;i++)by.push(curRcpt.charCodeAt(i));by.push(0x1B,0x64,0x04);
+  by.forEach(function(c){bin+=String.fromCharCode(c)});
+  $("rmsg").textContent="Opening RawBT. If nothing happens, install RawBT from the Play Store and pair your printer in it.";
+  location.href="intent:base64,"+btoa(bin)+"#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;"};
+$("rshare").onclick=function(){if(navigator.share)navigator.share({text:curRcpt}).catch(function(){});else{copyText(curRcpt);$("rmsg").textContent="Receipt copied."}};
+$("prlast").onclick=function(){if(lastSale&&S.sales[lastSale])showReceipt(S.sales[lastSale])};
+$("pset").onclick=function(){S.set={biz:$("pbiz").value.trim()||"Saints Trek Point",pw:parseInt($("ppw").value,10)||32,foot:$("pfoot").value.trim()};save();say("pmsg","Saved.")};
+$("ptest").onclick=function(){showReceipt({ts:Date.now(),by:S.me,total:2.5,pay:"cash",cust:"",lines:[{qty:1,name:"Test item",price:2.5}]})};
 
 /* ---- sync ---- */
 function pack(){return JSON.stringify({app:"saints-trek-point",v:1,from:S.me,ts:Date.now(),items:S.items,stockin:S.stockin,sales:S.sales,tx:S.tx,exp:S.exp,del:S.del})}
@@ -407,7 +459,7 @@ window.addEventListener("online",function(){if(S.live){if(fs)push();else connect
 setInterval(function(){if(S.live){if(fs)push();else connect()}},15000);
 
 if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
-load();save();gate();render();if(S.live)connect();
+load();$("pbiz").value=S.set.biz;$("ppw").value=String(S.set.pw);$("pfoot").value=S.set.foot;save();gate();render();if(S.live)connect();
 })();
 </script>
 </body>
